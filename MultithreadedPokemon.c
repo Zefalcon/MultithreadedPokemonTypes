@@ -4,6 +4,7 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <omp.h>
 #include <unistd.h>
 #include <string.h>
@@ -14,58 +15,48 @@
 int found[5]; //Marks whether the specific type is found.
 int indices[5]; //Marks the indices the specific types are at in the chart.
 int multiplier = 1;
-const char *type[18]; /* Type List */
-const int chart[18][18]; /* Type Chart */
+const char *type[18] = { "Normal", "Fighting", "Flying", "Poison", "Ground", "Rock", "Bug", "Ghost", "Steel", 
+"Fire", "Water", "Grass", "Electric", "Psychic", "Ice", "Dragon", "Dark", "Fairy" };; /* Type List */
+const int chart[18][18] = {{ 1, 2, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 }, 
+{ 1, 1, 2, 1, 1,.5,.5, 1, 1, 1, 1, 1, 1, 2, 1, 1,.5, 2 }, { 1,.5, 1, 1, 0, 2,.5, 1, 1, 1, 1,.5, 2, 1, 2, 1, 1, 1 }, 
+{ 1,.5, 1,.5, 2, 1,.5, 1, 1, 1, 1,.5, 1, 2, 1, 1, 1,.5 }, { 1, 1, 1,.5, 1,.5, 1, 1, 1, 1, 2, 2, 0, 1, 2, 1, 1, 1 }, 
+{ .5, 2,.5,.5, 2, 1, 1, 1, 2, 1, 2, 2, 1, 1, 1, 1, 1, 1 }, { 1,.5, 2, 1,.5, 2, 1, 1, 1, 2, 1,.5, 1, 1, 1, 1, 1, 1 }, 
+{ 0, 0, 1,.5, 1, 1,.5, 2, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1 }, { .5, 2,.5, 0, 2,.5,.5, 1,.5, 2, 1,.5, 1,.5,.5,.5, 1,.5 }, 
+{ 1, 1, 1, 1, 2, 2,.5, 1,.5,.5, 2,.5, 1, 1,.5, 1, 1,.5 }, { 1, 1, 1, 1, 1, 1, 1, 1, 1,.5,.5, 2, 2, 1,.5, 1, 1, 1 }, 
+{ 1, 1, 2, 2,.5, 1, 2, 1, 1, 2,.5,.5,.5, 1, 2, 1, 1, 1 }, { 1,.5, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1,.5, 1, 1, 1, 1, 1 }, 
+{ 1,.5, 1, 1, 1, 1, 2, 2, 1, 1, 1, 1, 1,.5, 1, 1, 2, 1 }, { 1, 2, 1, 1, 1, 2, 1, 1, 2, 2, 1, 1, 1, 1,.5, 1, 1, 1 }, 
+{ 1, 1, 1, 1, 1, 1, 1, 1, 1,.5,.5,.5,.5, 1, 2, 2, 1, 2 }, { 1, 2, 1, 1, 1, 1, 2,.5, 1, 1, 1, 1, 1, 1, 1, 1,.5, 2 }, 
+{ 1,.5, 1, 2, 1, 1,.5, 1, 2, 1, 1, 1, 1, 1, 1, 0,.5, 1 }}; /* Type Chart */
 
 int main(){
-
-	*type = { "Normal", "Fighting", "Flying", "Poison", "Ground", "Rock", "Bug", "Ghost", "Steel",
-		"Fire", "Water", "Grass", "Electric", "Psychic", "Ice", "Dragon", "Dark", "Fairy" };
-
-	chart[0] = { 1, 2, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
-	chart[1] = { 1, 1, 2, 1, 1,.5,.5, 1, 1, 1, 1, 1, 1, 2, 1, 1,.5, 2 };
-	chart[2] = { 1,.5, 1, 1, 0, 2,.5, 1, 1, 1, 1,.5, 2, 1, 2, 1, 1, 1 };
-	chart[3] = { 1,.5, 1,.5, 2, 1,.5, 1, 1, 1, 1,.5, 1, 2, 1, 1, 1,.5 };
-	chart[4] = { 1, 1, 1,.5, 1,.5, 1, 1, 1, 1, 2, 2, 0, 1, 2, 1, 1, 1 };
-	chart[5] = { .5, 2,.5,.5, 2, 1, 1, 1, 2, 1, 2, 2, 1, 1, 1, 1, 1, 1 };
-	chart[6] = { 1,.5, 2, 1,.5, 2, 1, 1, 1, 2, 1,.5, 1, 1, 1, 1, 1, 1 };
-	chart[7] = { 0, 0, 1,.5, 1, 1,.5, 2, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1 };
-	chart[8] = { .5, 2,.5, 0, 2,.5,.5, 1,.5, 2, 1,.5, 1,.5,.5,.5, 1,.5 };
-	chart[9] = { 1, 1, 1, 1, 2, 2,.5, 1,.5,.5, 2,.5, 1, 1,.5, 1, 1,.5 };
-	chart[10] = { 1, 1, 1, 1, 1, 1, 1, 1, 1,.5,.5, 2, 2, 1,.5, 1, 1, 1 };
-	chart[11] = { 1, 1, 2, 2,.5, 1, 2, 1, 1, 2,.5,.5,.5, 1, 2, 1, 1, 1 };
-	chart[12] = { 1,.5, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1,.5, 1, 1, 1, 1, 1 };
-	chart[13] = { 1,.5, 1, 1, 1, 1, 2, 2, 1, 1, 1, 1, 1,.5, 1, 1, 2, 1 };
-	chart[14] = { 1, 2, 1, 1, 1, 2, 1, 1, 2, 2, 1, 1, 1, 1,.5, 1, 1, 1 };
-	chart[15] = { 1, 1, 1, 1, 1, 1, 1, 1, 1,.5,.5,.5,.5, 1, 2, 2, 1, 2 };
-	chart[16] = { 1, 2, 1, 1, 1, 1, 2,.5, 1, 1, 1, 1, 1, 1, 1, 1,.5, 2 };
-	chart[17] = { 1,.5, 1, 2, 1, 1,.5, 1, 2, 1, 1, 1, 1, 1, 1, 0,.5, 1 };
-
 	int tid;
-	char line[20];
+	char attLine[20];
+	char defLine[4][20];
+	char numLine[20];
 
 	//Get attack type
-	char *attack[MAX_LINE/2 + 1];
+	char *attack;
 	printf("Enter attack type: ");
-	gets(line);
-	attack[0] = strtok(line, " ");
+	gets(attLine);
+	attack = attLine;
 
 	//Get number of defending types
 	int num;
 	printf("Enter number of defending types: ");
-	gets(line);
-	num = strtok(line, " ");
+	gets(numLine);
+	num = atoi(numLine);
 	if(num > MAX_TYPES){
 		printf("Maximum number of types exceeded.  Please try again");
 		return 0;
 	}
-	char *defend[num][MAX_LINE/2 + 1]; //stores defending types
+	char* defend[num]; //stores defending types
 	//Get defending types
 	int j = 0;
 	while(j < num){
-		printf("Enter defending type %d: ", j); //May need /n somewhere?
-		gets(line);
-		defend[j][0] = strtok(line, " ");
+		printf("Enter defending type %d: ", j + 1); 
+		gets(defLine[j]);
+		defend[j] = defLine[j];
+		j++;
 	}
 	int k;
 	for(k = 0; k < num + 1; k++){
@@ -74,10 +65,13 @@ int main(){
 	
 
 	int i;
-	omp_set_num_threads(omp_get_max_threads()); //Ensures omp uses the max number of threads for search.
+	omp_set_dynamic(0); //Ensures omp uses the max number of threads for search.
 
-	#pragma omp parallel for private(tid)
+	#pragma omp parallel for private(tid) num_threads(omp_get_max_threads())
 	for (i = 0; i < num + 1; i++){
+		//TODO: IT'S BASED ON I.  ALL THE SPLITTING IS DONE FOR YOU BY OMP.
+
+
 		//Split available threads into num+1 groups
 		tid = omp_get_thread_num();
 		int threads_per_group = omp_get_num_threads() / (num + 1);
@@ -95,10 +89,12 @@ int main(){
 			//Search divided between threads by relative thread number, with the first thread getting the first part, the second the second part, etc.
 			int t;
 			for(t = relative_num * search_section_size; t < (relative_num + 1) * search_section_size && !found[group_num]; t++){
-				if(type[t] == attack[0]){
-					#pragma omp critical {
+				if(strcmp(type[t], attack) == 0){
+					#pragma omp critical (mutex) 
+					{
 						indices[group_num] = t;
 						found[group_num] = 1;
+						printf("Found type %d in first search\n", t);
 					}
 				}
 			}
@@ -106,7 +102,7 @@ int main(){
 
 		//Groups 1->num search for defend[0->num-1]
 		else {
-			else if (tid < threads_per_group * 2){
+			if (tid < threads_per_group * 2){
 				group_num = 1;
 			}
 			else if (tid < threads_per_group * 3){
@@ -126,10 +122,13 @@ int main(){
 			//Search divided between threads by relative thread number, with the first thread getting the first part, the second the second part, etc.
 			int t;
 			for(t = relative_num * search_section_size; t < (relative_num + 1) * search_section_size && !found[group_num]; t++){
-				if(type[t] == defend[group_num - 1]){
-					#pragma omp critical {
+				printf("Searching for defend");
+				if(strcmp(type[t], defend[group_num - 1]) == 0){
+					#pragma omp critical (mutex) 
+					{
 						indices[group_num] = t;
 						found[group_num] = 1;
+						printf("Found type %d\n", t);
 					}
 				}
 			}
@@ -137,11 +136,13 @@ int main(){
 	}
 
 	//Return total multiplier
-	int defend;
-	int attack = indices[0];  //indices[0] is attack type, all else defense.
-	for(defend = 0; defend < num; r++){
+	int defendIndex;
+	int attackIndex;
+	attackIndex = indices[0];  //indices[0] is attack type, all else defense.
+	for(defendIndex = 0; defendIndex < num; defendIndex++){
 		//Defending type is first index, Attacking is second.
-		multiplier = multiplier * chart[defend][attack];
+		multiplier = multiplier * chart[defendIndex][attackIndex];
+		printf("New multiplier is %d\n", multiplier);
 	}
 
 	printf("Total damage multiplier: %d", multiplier);
