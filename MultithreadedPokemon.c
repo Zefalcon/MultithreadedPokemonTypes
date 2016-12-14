@@ -8,6 +8,7 @@
 #include <omp.h>
 #include <unistd.h>
 #include <string.h>
+#include <math.h>
 
 #define MAX_LINE 20
 #define MAX_TYPES 4
@@ -63,72 +64,105 @@ int main(){
 		found[k] = 0;
 	}
 	
-
-	int i;
 	omp_set_dynamic(0); //Ensures omp uses the max number of threads for search.
 
-	#pragma omp parallel for private(tid) num_threads(omp_get_max_threads())
-	for (i = 0; i < num + 1; i++){
-		//TODO: IT'S BASED ON I.  ALL THE SPLITTING IS DONE FOR YOU BY OMP.
-
-
-		//Split available threads into num+1 groups
-		tid = omp_get_thread_num();
-		int threads_per_group = omp_get_num_threads() / (num + 1);
-		int search_section_size = 18 / threads_per_group;
-		int group_num; //Group number, for use in thread divisions
-		int first_num; //First thread number of the group, for use in thread divisions
-		int relative_num; //Thread number relative to group, for use in thread divisions
-
-		//Group 0 searches for attack[0]
-		if (tid < threads_per_group){
-			group_num = 0;
-			first_num = group_num * threads_per_group;
-			relative_num = tid - first_num;
-
-			//Search divided between threads by relative thread number, with the first thread getting the first part, the second the second part, etc.
+	//Low-thread variety
+	if(omp_get_max_threads() < (num + 1) * 2){ //If less than 2 threads per search, search wouldn't get multithreaded
+		#pragma omp parallel private(tid) num_threads(omp_get_max_threads())
+		{
+			int i;
 			int t;
-			for(t = relative_num * search_section_size; t < (relative_num + 1) * search_section_size && !found[group_num]; t++){
-				if(strcmp(type[t], attack) == 0){
-					#pragma omp critical (mutex) 
-					{
-						indices[group_num] = t;
-						found[group_num] = 1;
-						printf("Found type %d in first search\n", t);
+			tid = omp_get_thread_num();
+			int search_section_size = ceil(18 / omp_get_num_threads());
+		
+			for (i = 0; i < num + 1; i++){
+				if (i == 0){ //First loop is attack search
+					for (t = tid * search_section_size; t < (tid + 1) * search_section_size && !found[i]; t++){
+						if(strcmp(type[t], attack) == 0){
+							#pragma omp critical (mutex)
+							{
+								indices[i] = t;
+								found[i] = 1;
+								printf("Found type %d in first search\n", t);
+							}
+						}
+					}
+				}
+				else{ //Other loops are defend searches
+					for (t = tid * search_section_size; t < (tid + 1) * search_section_size && !found[i]; t++){
+						if(strcmp(type[t], defend[i - 1]) == 0){
+							#pragma omp critical (mutex)
+							{
+								indices[i] = t;
+								found[i] = 1;
+								printf("Found type %d\n", t);
+							}
+						}
 					}
 				}
 			}
 		}
+	}
 
-		//Groups 1->num search for defend[0->num-1]
-		else {
-			if (tid < threads_per_group * 2){
-				group_num = 1;
-			}
-			else if (tid < threads_per_group * 3){
-				group_num = 2;
-	
-			}
-			else if (tid < threads_per_group * 4){
-				group_num = 3;
-			}
-			else{
-				group_num = 4;
-			}
-		
-			first_num = group_num * threads_per_group;
-			relative_num = tid - first_num;		
-
-			//Search divided between threads by relative thread number, with the first thread getting the first part, the second the second part, etc.
+	//High-thread variety
+	else{
+		#pragma omp parallel private(tid) num_threads(omp_get_max_threads())
+		{
+			//Split available threads into num+1 groups
+			tid = omp_get_thread_num();
+			int threads_per_group = omp_get_num_threads() / (num + 1);
+			int search_section_size = ceil(18 / threads_per_group);
+			int group_num; //Group number, for use in thread divisions
+			int first_num; //First thread number of the group, for use in thread divisions
+			int relative_num; //Thread number relative to group, for use in thread divisions
 			int t;
-			for(t = relative_num * search_section_size; t < (relative_num + 1) * search_section_size && !found[group_num]; t++){
-				printf("Searching for defend");
-				if(strcmp(type[t], defend[group_num - 1]) == 0){
-					#pragma omp critical (mutex) 
-					{
-						indices[group_num] = t;
-						found[group_num] = 1;
-						printf("Found type %d\n", t);
+			
+			//Group 0 searches for attack
+			if (tid < threads_per_group){
+				group_num = 0;
+				first_num = group_num * threads_per_group;
+				relative_num = tid - first_num;
+
+				for(t = relative_num * search_section_size; t < (relative_num + 1) * search_section_size && !found[group_num]; t++){
+					if(strcmp(type[t], attack) == 0){
+						#pragma omp critical (mutex2)
+						{
+							indices[group_num] = t;
+							found[group_num] = 1;
+							printf("Found type %d in first search\n", t);
+						}
+					}
+				}
+			}
+
+			//Groups 1->num+1 search for defend[0->num]
+			else {
+				if (tid < threads_per_group * 2){
+					group_num = 1;
+				}
+				else if (tid < threads_per_group * 3){
+					group_num = 2;
+				}
+				else if (tid < threads_per_group * 4){
+					group_num = 3;
+				}
+				else{
+					group_num = 4;
+				}
+
+				first_num = group_num * threads_per_group;
+				relative_num = tid - first_num;
+
+				//Search divided between threads by relative thread number
+				int t;
+				for(t = relative_num * search_section_size; t < (relative_num + 1) * search_section_size && !found[group_num]; t++){
+					 if(strcmp(type[t], defend[group_num - 1]) == 0){
+						#pragma omp critical (mutex2)
+						{
+							indices[group_num] = t;
+							found[group_num] = 1;
+							printf("Found type %d\n", t);
+						}
 					}
 				}
 			}
@@ -139,8 +173,10 @@ int main(){
 	int defendIndex;
 	int attackIndex;
 	attackIndex = indices[0];  //indices[0] is attack type, all else defense.
-	for(defendIndex = 0; defendIndex < num; defendIndex++){
+	int q;
+	for(q = 1; q < num + 1; q++){
 		//Defending type is first index, Attacking is second.
+		defendIndex = indices[q];
 		multiplier = multiplier * chart[defendIndex][attackIndex];
 		printf("New multiplier is %d\n", multiplier);
 	}
