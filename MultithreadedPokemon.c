@@ -15,11 +15,11 @@
 
 int found[5]; //Marks whether the specific type is found.
 int indices[5]; //Marks the indices the specific types are at in the chart.
-int multiplier = 1;
+float multiplier = 1.0;
 const char *type[18] = { "Normal", "Fighting", "Flying", "Poison", "Ground", "Rock", "Bug", "Ghost", "Steel", 
 "Fire", "Water", "Grass", "Electric", "Psychic", "Ice", "Dragon", "Dark", "Fairy" };; /* Type List */
-const int chart[18][18] = {{ 1, 2, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 }, 
-{ 1, 1, 2, 1, 1,.5,.5, 1, 1, 1, 1, 1, 1, 2, 1, 1,.5, 2 }, { 1,.5, 1, 1, 0, 2,.5, 1, 1, 1, 1,.5, 2, 1, 2, 1, 1, 1 }, 
+const float chart[18][18] = {{ 1, 2, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 }, 
+{ 1, 1, 2, 1, 1, .5,.5, 1, 1, 1, 1, 1, 1, 2, 1, 1,.5, 2 }, { 1,.5, 1, 1, 0, 2, .5, 1, 1, 1, 1,.5, 2, 1, 2, 1, 1, 1 }, 
 { 1,.5, 1,.5, 2, 1,.5, 1, 1, 1, 1,.5, 1, 2, 1, 1, 1,.5 }, { 1, 1, 1,.5, 1,.5, 1, 1, 1, 1, 2, 2, 0, 1, 2, 1, 1, 1 }, 
 { .5, 2,.5,.5, 2, 1, 1, 1, 2, 1, 2, 2, 1, 1, 1, 1, 1, 1 }, { 1,.5, 2, 1,.5, 2, 1, 1, 1, 2, 1,.5, 1, 1, 1, 1, 1, 1 }, 
 { 0, 0, 1,.5, 1, 1,.5, 2, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1 }, { .5, 2,.5, 0, 2,.5,.5, 1,.5, 2, 1,.5, 1,.5,.5,.5, 1,.5 }, 
@@ -27,7 +27,7 @@ const int chart[18][18] = {{ 1, 2, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
 { 1, 1, 2, 2,.5, 1, 2, 1, 1, 2,.5,.5,.5, 1, 2, 1, 1, 1 }, { 1,.5, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1,.5, 1, 1, 1, 1, 1 }, 
 { 1,.5, 1, 1, 1, 1, 2, 2, 1, 1, 1, 1, 1,.5, 1, 1, 2, 1 }, { 1, 2, 1, 1, 1, 2, 1, 1, 2, 2, 1, 1, 1, 1,.5, 1, 1, 1 }, 
 { 1, 1, 1, 1, 1, 1, 1, 1, 1,.5,.5,.5,.5, 1, 2, 2, 1, 2 }, { 1, 2, 1, 1, 1, 1, 2,.5, 1, 1, 1, 1, 1, 1, 1, 1,.5, 2 }, 
-{ 1,.5, 1, 2, 1, 1,.5, 1, 2, 1, 1, 1, 1, 1, 1, 0,.5, 1 }}; /* Type Chart */
+{ 1,.5, 1, 2, 1, 1, 0.5, 1, 2, 1, 1, 1, 1, 1, 1, 0,.5, 1 }}; /* Type Chart */
 
 int main(){
 	int tid;
@@ -73,29 +73,27 @@ int main(){
 			int i;
 			int t;
 			tid = omp_get_thread_num();
-			int search_section_size = ceil(18 / omp_get_num_threads());
+			int search_section_size = ceil(18.0 / omp_get_num_threads());
 		
 			for (i = 0; i < num + 1; i++){
 				if (i == 0){ //First loop is attack search
-					for (t = tid * search_section_size; t < (tid + 1) * search_section_size && !found[i]; t++){
+					for (t = tid * search_section_size; t < 18 && t < (tid + 1) * search_section_size && !found[i]; t++){
 						if(strcmp(type[t], attack) == 0){
 							#pragma omp critical (mutex)
 							{
 								indices[i] = t;
 								found[i] = 1;
-								printf("Found type %d in first search\n", t);
 							}
 						}
 					}
 				}
 				else{ //Other loops are defend searches
-					for (t = tid * search_section_size; t < (tid + 1) * search_section_size && !found[i]; t++){
+					for (t = tid * search_section_size; t < 18 && t < (tid + 1) * search_section_size && !found[i]; t++){
 						if(strcmp(type[t], defend[i - 1]) == 0){
 							#pragma omp critical (mutex)
 							{
 								indices[i] = t;
 								found[i] = 1;
-								printf("Found type %d\n", t);
 							}
 						}
 					}
@@ -129,7 +127,6 @@ int main(){
 						{
 							indices[group_num] = t;
 							found[group_num] = 1;
-							printf("Found type %d in first search\n", t);
 						}
 					}
 				}
@@ -161,7 +158,6 @@ int main(){
 						{
 							indices[group_num] = t;
 							found[group_num] = 1;
-							printf("Found type %d\n", t);
 						}
 					}
 				}
@@ -178,10 +174,9 @@ int main(){
 		//Defending type is first index, Attacking is second.
 		defendIndex = indices[q];
 		multiplier = multiplier * chart[defendIndex][attackIndex];
-		printf("New multiplier is %d\n", multiplier);
 	}
 
-	printf("Total damage multiplier: %d", multiplier);
+	printf("Total damage multiplier: %.4f", multiplier);
 }
 	
 	
